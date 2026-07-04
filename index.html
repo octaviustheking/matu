@@ -34,7 +34,21 @@
     </div>
 
     <div id="inspector" class="sidebar panel">
-        <h1>Inspector</h1>
+        <div id="inspector-header">
+            <h1>Inspector</h1>
+            <button id="close-inspector">x</button>
+        </div>
+
+        <div id="inspector-content">
+            <div id="asset-select">
+                <img id="inspector-thumb">
+                <div id="inspector-filename"></div>
+                <div id="inspector-extension"></div>
+                <input id="inspector-rename" type="text">
+
+                <button id="inspector-save">Save</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

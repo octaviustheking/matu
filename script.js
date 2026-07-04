@@ -1,7 +1,35 @@
-// draw viewport grid
+// this is honestly getting very messy and it's getting hard to keep track of things lol, i should've split this into multiple files
+
 const canvas = document.getElementById('matu-canvas');
 const context = canvas.getContext('2d');
 
+const preview_window = document.getElementById('preview-window');
+const preview_image = document.getElementById('preview-image');
+const preview_header = document.getElementById('preview-header');
+const preview_file = document.getElementById('preview-file');
+const close_preview = document.getElementById('close-preview');
+
+const add_asset = document.getElementById('add-assets');
+const asset_input = document.getElementById('asset-input');
+const asset_list = document.getElementById('asset-list');
+const asset_select = document.getElementById('asset-select');
+
+const inspector_thumb = document.getElementById('inspector-thumb');
+const inspector_filename = document.getElementById('inspector-filename');
+const inspector_extension = document.getElementById('inspector-extension');
+const inspector_rename = document.getElementById('inspector-rename');
+const inspector_save = document.getElementById('inspector-save');
+const close_inspector = document.getElementById('close-inspector');
+
+const preview_windows = new Map();
+let max_z = 100;
+let preview_index = 0;
+
+let asset_names = new Set();
+let asset_files = new Map();
+let asset_tiles = new Map();
+
+// draw viewport grid
 function resizeCanvas() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
@@ -10,7 +38,7 @@ function resizeCanvas() {
 resizeCanvas();
 
 function drawGrid() {
-    const grid_size = 32;
+    const grid_size = 20;
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     context.strokeStyle = '#2C2C33';
@@ -33,18 +61,9 @@ function drawGrid() {
 
 drawGrid();
 
-// add asset button
-const add_asset = document.getElementById('add-assets');
-const asset_input = document.getElementById('asset-input');
-const asset_list = document.getElementById('asset-list');
-
-let asset_names = new Set();
-let asset_files = new Map();
-
+// get unique name for each asset
 function getName(name) {
-    if (!asset_names.has(name)) {
-        return name;
-    }
+    if (!asset_names.has(name)) return name;
 
     let base = name;
     let extension = '';
@@ -66,6 +85,7 @@ function getName(name) {
     return new_name;
 }
 
+// shorten file name
 function shortenName(name, max_length = 14) {
     const dot_index = name.lastIndexOf('.');
     const extension = dot_index !== -1 ? name.slice(dot_index) : '';
@@ -84,13 +104,249 @@ add_asset.addEventListener('click', () => {
     asset_input.click();
 });
 
+function openInspector(name, ext) {
+    asset_select.style.display = 'flex';
+    close_inspector.classList.add('show');
+    const file = asset_files.get(name);
+    if (!file) {
+        console.warn('No file found for ', name);
+    }
+    const tile = asset_tiles.get(name);
+
+    if (file.type.startsWith('image/')) {
+        inspector_thumb.src = URL.createObjectURL(file);
+    } else if (file.type.startsWith('audio/')) {
+        inspector_thumb.src = '';
+        inspector_thumb.alt = 'audio file';
+    } else {
+        inspector_thumb.src = '';
+        inspector_thumb.alt = 'file';
+    }
+
+    inspector_filename.textContent = name;
+    inspector_extension.textContent = 'File type: ' + ext;
+    inspector_rename.value = name;
+
+    inspector_save.onclick = () => {
+        const current_name = inspector_filename.textContent;
+        renameAsset(current_name);
+    };
+}
+
+function closeInspector(item, remove_item) {
+    asset_select.style.display = 'none';
+    close_inspector.classList.remove('show');
+    item.classList.remove(remove_item);
+}
+
+function openPreview(name) {
+    if (preview_windows.has(name)) {
+        const preview = preview_windows.get(name);
+
+        centerWindow(preview);
+
+        preview.style.display = 'flex';
+        bringToFront(preview);
+
+        return;
+    }
+
+    const file = asset_files.get(name);
+    if (!file) {
+        console.warn('No file found for ', name);
+    }
+
+    const preview = document.createElement('div');
+
+    preview.style.display = 'flex';
+    preview.className = 'preview-window';
+
+    preview.innerHTML = `
+        <div class="preview-window-header">
+            <h1 class="preview-header">Preview</h1>
+            <p class="preview-file">${shortenName(name)}</p>
+            <button class="close-preview">x</button>
+        </div>
+        <img class="preview-image">
+    `;
+
+    const image = preview.querySelector('.preview-image');
+    const header = preview.querySelector('.preview-window-header');
+    const close = preview.querySelector('.close-preview');
+
+    if (file.type.startsWith('image/')) {
+        image.src = URL.createObjectURL(file);
+    }
+
+    document.getElementById('center').appendChild(preview);
+
+    image.onload = () => {
+        centerWindow(preview);
+    };
+
+    dragElement(preview, header);
+    bringToFront(preview);
+
+    preview_windows.set(name, preview);
+
+    close.onclick = () => {
+        closePreview(preview, name);
+    };
+
+    function centerWindow(preview) {
+        const parent = document.getElementById("center");
+
+        const centerX = (parent.clientWidth - preview.offsetWidth) / 2;
+        const centerY = (parent.clientHeight - preview.offsetHeight) / 2;
+
+        const offsets = [
+            {x: 0,  y: 0},
+            {x: 30, y: 30},
+            {x: 60, y: 15},
+            {x: 15, y: 60}
+        ];
+
+        const offset = offsets[preview_index];
+        preview_index = (preview_index + 1) % offsets.length;
+        preview.style.left = centerX + offset.x + "px";
+        preview.style.top  = centerY + offset.y + "px";
+    }
+
+    // preview_window.style.display = 'flex';
+    // preview_window.style.top = '50%';
+    // preview_window.style.left = '50%';
+    // preview_window.style.transform = 'translate(-50%, -50%)';
+    // preview_file.textContent = shortenName(name);
+
+    // requestAnimationFrame(() => {
+    //     const parent = preview_window.parentElement;
+    //     preview_window.style.left = (parent.clientWidth - preview_window.offsetWidth) / 2 + "px";
+    //     preview_window.style.top = (parent.clientHeight - preview_window.offsetHeight) / 2 + "px";
+    // });
+
+    // const file = asset_files.get(name);
+
+    // if (file.type.startsWith('image/')) {
+    //     preview_image.src = URL.createObjectURL(file);
+    // } else if (file.type.startsWith('audio/')) {
+    //     // fill audio out later
+    // } else {
+    //     preview_image.src = '';
+    //     preview_image.alt = 'file';
+    // }
+
+    // const parent = preview_window.parentElement;
+
+    // preview_window.style.left = (parent.clientWidth - preview_window.offsetWidth) / 2 + "px";
+    // preview_window.style.top = (parent.clientHeight - preview_window.offsetHeight) / 2 + "px";
+
+    // close_preview.addEventListener('click', () => {
+    //     preview_window.style.display = 'none';
+    // });
+}
+
+function closePreview(preview, name) {
+    preview_windows.delete(name);
+    preview.remove();
+}
+
+// arigato w3 schools
+
+function dragElement(element, handle=element) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    handle.addEventListener('mousedown', dragMouseDown);
+
+    function dragMouseDown(e) {
+        e.preventDefault();
+
+        bringToFront(element);
+
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        document.addEventListener('mousemove', elementDrag);
+        document.addEventListener('mouseup', stopDrag);
+    }
+
+    function elementDrag(e) {
+        e.preventDefault();
+
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        element.style.left = element.offsetLeft - pos1 + 'px';
+        element.style.top = element.offsetTop - pos2 + 'px';
+    }
+
+    function stopDrag() {
+        document.removeEventListener('mousemove', elementDrag);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+}
+
+function bringToFront(window) {
+    window.style.zIndex = ++max_z;
+}
+
+function renameAsset(old_name) {
+    let new_name_raw = inspector_rename.value.trim();
+    if (!new_name_raw) {
+        return;
+    }
+
+    const dot_index = old_name.lastIndexOf('.');
+    const original_extension = dot_index !== -1 ? old_name.slice(dot_index) : '';
+
+    if (!new_name_raw.endsWith(original_extension)) {
+        new_name_raw += original_extension;
+    }
+
+    if (new_name_raw === old_name) {
+        return;
+    }
+
+    const new_name = getName(new_name_raw);
+
+    const file = asset_files.get(old_name);
+    const tile = asset_tiles.get(old_name);
+
+    tile.dataset.name = new_name;
+
+    asset_files.delete(old_name);
+    asset_tiles.delete(old_name);
+
+    asset_files.set(new_name, file);
+    asset_tiles.set(new_name, tile);
+    
+    asset_names.delete(old_name);
+    asset_names.add(new_name);
+
+    const label = tile.querySelector('.asset-label');
+    label.textContent = shortenName(new_name);
+
+    inspector_filename.textContent = new_name;
+
+    if (preview_windows.has(old_name)) {
+        const preview = preview_windows.get(old_name);
+
+        const preview_file = preview.querySelector('.preview-file');
+        preview_file.textContent = shortenName(new_name);
+
+        preview_windows.delete(old_name);
+        preview_windows.set(new_name, preview);
+    }
+}
+
+// upload assets
 asset_input.addEventListener('change', () => {
     const files = Array.from(asset_input.files);
+
     files.forEach(file => {
         const unique_name = getName(file.name);
         asset_names.add(unique_name);
-
-        asset_files.set(unique_name, file);
 
         const item = document.createElement('div');
         item.classList.add('asset-item');
@@ -110,13 +366,73 @@ asset_input.addEventListener('change', () => {
             thumbnail.textContent = '📄';
         }
 
+        // delete
+        const delete_button = document.createElement('button');
+        delete_button.classList.add('delete-asset');
+        delete_button.textContent = 'x';
+        delete_button.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            const current_name = item.dataset.name;
+
+            if (preview_windows.has(current_name)) {
+                const preview = preview_windows.get(current_name);
+                closePreview(preview, current_name);
+            }
+
+            asset_list.removeChild(item);
+            asset_names.delete(current_name);
+            asset_files.delete(current_name);
+            asset_tiles.delete(current_name);
+
+            closeInspector(item, 'asset-item');
+        });
+
+        // close inspector
+        close_inspector.addEventListener('click', () => {
+            // asset_select.style.display = 'none';
+            // item.classList.remove('asset-selected');
+            // close_inspector.style.display = 'none';
+            closeInspector(item, 'asset-selected')
+            
+        });
+
         const label = document.createElement('div');
         label.classList.add('asset-label');
         label.textContent = shortenName(unique_name);
 
         item.appendChild(thumbnail);
         item.appendChild(label);
+        item.appendChild(delete_button);
+        item.dataset.name = unique_name;
         asset_list.appendChild(item);
+
+        asset_files.set(unique_name, file);
+        asset_tiles.set(unique_name, item);
+
+        // asset select
+        item.addEventListener('click', () => {
+            asset_tiles.forEach(tile => tile.classList.remove('asset-selected'));
+            item.classList.add('asset-selected');
+
+            const current_name = item.dataset.name;
+
+            const dot_index = current_name.lastIndexOf('.');
+            const ext = current_name.substring(dot_index);
+            openInspector(current_name, ext);
+        });
+
+        // preview
+        item.addEventListener('dblclick', () => {
+            asset_tiles.forEach(tile => tile.classList.remove('asset-selected'));
+            item.classList.add('asset-selected');
+
+            const current_name = item.dataset.name;
+            // const dot_index = current_name.lastIndexOf('.');
+            // const ext = current_name.substring(dot_index);
+            // openInspector(unique_name, ext);
+            openPreview(current_name);
+        });
     });
 
     asset_input.value = "";
