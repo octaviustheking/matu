@@ -96,6 +96,8 @@ function createNode(type, parent_id = null, name = null) {
         node.loop = false;
     } else if (type === 'script') {
         node.code = '';
+        node.compiled = null;
+        node.error = null;
     }
 
     hierarchy_nodes.set(id, node);
@@ -317,6 +319,10 @@ function openNodeInspector(node) {
         node_audio_loop.checked = node.loop;
     } else if (node.type === 'script') {
         node_script_code.value = node.code;
+    }
+
+    if (typeof showScriptError === 'function') {
+        showScriptError(node.type === 'script' ? node : null);
     }
 }
 

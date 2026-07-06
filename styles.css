@@ -3,10 +3,15 @@
     --hierarchy-bg: #181820;
     --hierarchy-font: #c8c8d0;
     --node-highlight: #202028;
+    --script-error: #ff9a9a;
+    --error-bg: #2a1010;
     --selected-highlight: #063f4f;
     --dropdown-bg: #202630;
     --toolbar-bg: #1a1a1f;
     --toolbar-font: #e6e9ee;
+    --run-color: #0e8f4a;
+    --run-color-hover: #12b85f;
+    --stop-font: #ff6b6b;
     --viewport-bg: #101014;
     --grid-color: #2c2c33;
     --preview-window-bg: #0E1A20;
@@ -236,6 +241,22 @@ h1 {
     font-style: normal;
 }
 
+#node-script-error {
+    display: none;
+    margin-top: 6px;
+    padding: 6px;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    color: var(--script-error);
+    background-color: var(--error-bg);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#node-script-error.show {
+    display: block;
+}
+
 #node-delete {
     margin-top: 12px;
     padding: 6px;
@@ -340,6 +361,52 @@ h1 {
     flex: 0 0 10%;
     background-color: var(--toolbar-bg);
     color: var(--toolbar-font);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 012px;
+}
+
+.play-button {
+    padding: 6px 14px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--run-color);
+    background-color: transparent;
+    color: var(--run-color);
+    font-family: "JetBrains Mono", monospace;
+    font-optical-sizing: auto;
+    font-style: normal;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.play-button:hover:not(:disabled) {
+    background-color: var(--run-color);
+    color: var(--toolbar-bg);
+}
+
+.play-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+    border-color: var(--toolbar-font);
+    color: var(--toolbar-font);
+}
+
+#stop-button {
+    border-color: var(--danger);
+    color: var(--stop-font);
+}
+
+#stop-button:hover:not(:disabled) {
+    background-color: var(--danger);
+    color: var(--toolbar-font);
+}
+
+#runtime-status {
+    font-size: 0.75rem;
+    color: var(--toolbar-font);
+    opacity: 0.7;
 }
 
 #viewport {

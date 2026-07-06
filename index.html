@@ -29,7 +29,11 @@
 
     <div id="center">
 
-        <div id="toolbar" class="panel"></div>
+        <div id="toolbar" class="panel">
+            <button id="run-button" class="play-button">Run</button>
+            <button id="stop-button" class="play-button">Stop</button>
+            <span id="runtime-status"></span>
+        </div>
 
         <div id="viewport" class="panel">
             <canvas id="matu-canvas"></canvas>
@@ -99,7 +103,8 @@
 
                 <div id="node-script-fields" class="node-field-group">
                     <label for="node-script-code">Code</label>
-                    <textarea id="node-script-code" rows="8"></textarea>
+                    <textarea id="node-script-code" rows="8" spellcheck="false"></textarea>
+                    <div id="node-script-error"></div>
                 </div>
 
                 <button id="node-delete">Delete Node</button>
@@ -108,6 +113,7 @@
     </div>
 
     <script src="hierarchy.js"></script>
+    <script src="runtime.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
