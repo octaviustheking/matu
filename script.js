@@ -5,6 +5,21 @@ let dropdown_open = false;
 
 const canvas = document.getElementById('matu-canvas');
 const context = canvas.getContext('2d');
+const world_width = 800;
+const world_height =  400;
+const viewport = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+
+    update() {
+        const scaleX = canvas.clientWidth / world_width;
+        const scaleY = canvas.clientHeight / world_height;
+        this.scale = Math.min(scaleX, scaleY);
+        this.offsetX = (canvas.clientWidth - world_width * this.scale) / 2;
+        this.offsetY = (canvas.clientHeight - world_height * this.scale) / 2;
+    }
+};
 
 const preview_window = document.getElementById('preview-window');
 const preview_image = document.getElementById('preview-image');
@@ -24,6 +39,7 @@ const asset_select = document.getElementById('asset-select');
 let asset_names = new Set();
 let asset_files = new Map();
 let asset_tiles = new Map();
+let asset_images = new Map(); 
 
 const inspector_thumb = document.getElementById('inspector-thumb');
 const inspector_filename = document.getElementById('inspector-filename');
@@ -31,6 +47,12 @@ const inspector_extension = document.getElementById('inspector-extension');
 const inspector_rename = document.getElementById('inspector-rename');
 const inspector_save = document.getElementById('inspector-save');
 const close_inspector = document.getElementById('close-inspector');
+
+const inspector_x = document.getElementById('inspector-x');
+const inspector_y = document.getElementById('inspector-y');
+const inspector_w = document.getElementById('inspector-width');
+const inspector_h = document.getElementById('inspector-height');
+let selected_object = null;
 
 // hierarchy dropdown
 add_hierarchy.addEventListener('click', (e) => {
@@ -49,9 +71,28 @@ document.addEventListener('click', () => {
     dropdown_open = false;
 });
 
-hierarchy_dropdown_content.addEventListener('click', () => {
+hierarchy_dropdown_content.addEventListener('click', (e) => {
     e.stopPropagation();
-})
+});
+
+const label_to_hierarchy = {
+    'Group': 'group',
+    'Object': 'object',
+    'Sprite': 'sprite',
+    'Audio': 'audio',
+    'Script': 'script'
+};
+
+hierarchy_dropdown_content.querySelectorAll('button').forEach(button => {
+    const type = label_to_hierarchy[button.textContent.trim()];
+    if (!type) return;
+
+    button.addEventListener('click', () => {
+        addNodeFromToolbar(type);
+        hierarchy_dropdown_content.classList.remove('open');
+        dropdown_open = false;
+    });
+});
 
 // draw viewport grid
 function resizeCanvas() {
@@ -63,27 +104,93 @@ resizeCanvas();
 
 function drawGrid() {
     const grid_size = 20;
-    context.clearRect(0, 0, canvas.width, canvas.height);
 
-    context.strokeStyle = '#2C2C33';
-    context.lineWidth = 1;
+    context.strokeStyle = '#2c2c33';
+    context.lineWidth = 1 / viewport.scale;
 
-    for (let x = 0; x < canvas.width; x += grid_size) {
+    for (let x = 0; x < world_width; x += grid_size) {
         context.beginPath();
         context.moveTo(x, 0);
-        context.lineTo(x, canvas.height);
+        context.lineTo(x, world_height);
         context.stroke();
     }
 
-    for (let y = 0; y < canvas.height; y += grid_size) {
+    for (let y = 0; y < world_height; y += grid_size) {
         context.beginPath();
         context.moveTo(0, y);
-        context.lineTo(canvas.width, y);
+        context.lineTo(world_width, y);
         context.stroke();
     }
 }
 
-drawGrid();
+function drawScene() {
+    for (const {object_node, sprite_node} of getRenderables()) {
+        drawObject(object_node, sprite_node);
+    }
+}
+
+function getAssetImage(name) {
+    if (asset_images.has(name)) {
+        return asset_images.get(name);
+    }
+
+    const file = asset_files.get(name);
+    if (!file) return null;
+
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    asset_images.set(name, img);
+
+    return null; 
+}
+
+function drawObject(object_node, sprite_node) {
+    if (!sprite_node) return;
+
+    const img = getAssetImage(sprite_node.asset_name);
+    if (!img || !img.complete) return;
+
+    const {x, y, width, height, rotation} = object_node.transform;
+
+    if (!rotation) {
+        context.drawImage(img, x, y, width, height);
+        return;
+    }
+
+    context.save();
+    context.translate(x + width / 2, y + height / 2);
+    context.rotate(rotation);
+    context.drawImage(img, -width / 2, -height / 2, width, height);
+    context.restore();
+}
+
+function screenToWorld(e) {
+    const rect = canvas.getBoundingClientRect();
+
+    const x = (e.clientX - rect.left - viewport.offsetX) / viewport.scale;
+    const y = (e.clientY - rect.top - viewport.offsetY) / viewport.scale;
+
+    return {x, y};
+}
+
+function render() {
+    viewport.update();
+
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.translate(viewport.offsetX, viewport.offsetY);
+    context.scale(viewport.scale, viewport.scale);
+
+    drawGrid();
+    drawScene();
+    requestAnimationFrame(render);
+}
+
+render();
 
 // get unique name for each asset
 function getName(name) {
@@ -129,11 +236,16 @@ add_asset.addEventListener('click', () => {
 });
 
 function openInspector(name, ext) {
+    closeNodeInspector();
+    selected_node_id = null;
+    renderUI();
+
     asset_select.style.display = 'flex';
     close_inspector.classList.add('show');
     const file = asset_files.get(name);
     if (!file) {
         console.warn('No file found for ', name);
+        return;
     }
     const tile = asset_tiles.get(name);
 
@@ -154,6 +266,21 @@ function openInspector(name, ext) {
     inspector_save.onclick = () => {
         const current_name = inspector_filename.textContent;
         renameAsset(current_name);
+    };
+}
+
+function updateInspector(obj) {
+    if (!inspector_x || !inspector_y || !inspector_w || !inspector_h) return;
+    inspector_x.value = obj.x;
+    inspector_y.value = obj.y;
+    inspector_w.value = obj.width;
+    inspector_h.value = obj.height;
+}
+
+if (inspector_x) {
+    inspector_x.oninput = (e) => {
+        if (!selected_object) return;
+        selected_object.x = Number(e.target.value);
     };
 }
 
@@ -178,6 +305,7 @@ function openPreview(name) {
     const file = asset_files.get(name);
     if (!file) {
         console.warn('No file found for ', name);
+        return;
     }
 
     const preview = document.createElement('div');
@@ -235,38 +363,6 @@ function openPreview(name) {
         preview.style.left = centerX + offset.x + "px";
         preview.style.top  = centerY + offset.y + "px";
     }
-
-    // preview_window.style.display = 'flex';
-    // preview_window.style.top = '50%';
-    // preview_window.style.left = '50%';
-    // preview_window.style.transform = 'translate(-50%, -50%)';
-    // preview_file.textContent = shortenName(name);
-
-    // requestAnimationFrame(() => {
-    //     const parent = preview_window.parentElement;
-    //     preview_window.style.left = (parent.clientWidth - preview_window.offsetWidth) / 2 + "px";
-    //     preview_window.style.top = (parent.clientHeight - preview_window.offsetHeight) / 2 + "px";
-    // });
-
-    // const file = asset_files.get(name);
-
-    // if (file.type.startsWith('image/')) {
-    //     preview_image.src = URL.createObjectURL(file);
-    // } else if (file.type.startsWith('audio/')) {
-    //     // fill audio out later
-    // } else {
-    //     preview_image.src = '';
-    //     preview_image.alt = 'file';
-    // }
-
-    // const parent = preview_window.parentElement;
-
-    // preview_window.style.left = (parent.clientWidth - preview_window.offsetWidth) / 2 + "px";
-    // preview_window.style.top = (parent.clientHeight - preview_window.offsetHeight) / 2 + "px";
-
-    // close_preview.addEventListener('click', () => {
-    //     preview_window.style.display = 'none';
-    // });
 }
 
 function closePreview(preview, name) {
@@ -344,7 +440,12 @@ function renameAsset(old_name) {
 
     asset_files.set(new_name, file);
     asset_tiles.set(new_name, tile);
-    
+
+    if (asset_images.has(old_name)) {
+        asset_images.set(new_name, asset_images.get(old_name));
+        asset_images.delete(old_name);
+    }
+
     asset_names.delete(old_name);
     asset_names.add(new_name);
 
@@ -408,17 +509,14 @@ asset_input.addEventListener('change', () => {
             asset_names.delete(current_name);
             asset_files.delete(current_name);
             asset_tiles.delete(current_name);
+            asset_images.delete(current_name);
 
             closeInspector(item, 'asset-item');
         });
 
         // close inspector
         close_inspector.addEventListener('click', () => {
-            // asset_select.style.display = 'none';
-            // item.classList.remove('asset-selected');
-            // close_inspector.style.display = 'none';
-            closeInspector(item, 'asset-selected')
-            
+            closeInspector(item, 'asset-selected');
         });
 
         const label = document.createElement('div');
@@ -452,9 +550,6 @@ asset_input.addEventListener('change', () => {
             item.classList.add('asset-selected');
 
             const current_name = item.dataset.name;
-            // const dot_index = current_name.lastIndexOf('.');
-            // const ext = current_name.substring(dot_index);
-            // openInspector(unique_name, ext);
             openPreview(current_name);
         });
     });
