@@ -7,11 +7,11 @@ const valid_children = {
 };
 
 const node_icons = {
-    group:  '📁',
-    object: '📦',
-    sprite: '🖼️',
-    audio:  '🔊',
-    script: '📄'
+    group:  'G:',
+    object: 'O:',
+    sprite: 'S:',
+    audio:  'A:',
+    script: 'C:'
 }
 
 let next_node_id = 1;
@@ -32,6 +32,7 @@ const node_x = document.getElementById('node-x');
 const node_y = document.getElementById('node-y');
 const node_width = document.getElementById('node-width');
 const node_height = document.getElementById('node-height');
+const node_dimension_lock = document.getElementById('dimensions-lock');
 const node_rotation = document.getElementById('node-rotation');
 
 const node_sprite_fields = document.getElementById('node-sprite-fields');
@@ -88,6 +89,7 @@ function createNode(type, parent_id = null, name = null) {
 
     if (type === 'object') {
         node.transform = {x: 0, y: 0, width: 100, height: 100, rotation: 0};
+        node.dimension_lock = true;
     } else if (type === 'sprite') {
         node.asset_name = null;
         node.visible = true;
@@ -311,6 +313,7 @@ function openNodeInspector(node) {
         node_y.value = node.transform.y;
         node_width.value = node.transform.width;
         node_height.value = node.transform.height;
+        dimension_lock.checked = node.dimension_lock;
         node_rotation.value = (node.transform.rotation * 180 / Math.PI).toFixed(1);
     } else if (node.type === 'sprite') {
         assetOptions(node_sprite_asset, 'image/', node.asset_name);

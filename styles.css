@@ -325,7 +325,7 @@ h1 {
     max-width: 50%;
 }
 
-#node-sprite-visible, #node-audio-loop {
+#node-sprite-visible, #node-audio-loop, #dimensions-lock {
   -webkit-appearance: none;
   appearance: none;
   width: 20px;
@@ -340,7 +340,7 @@ h1 {
   cursor: pointer;
 }
 
-#node-sprite-visible::before, #node-audio-loop::before {
+#node-sprite-visible::before, #node-audio-loop::before, #dimensions-lock::before {
   content: "";
   width: 10px;
   height: 10px;
@@ -349,7 +349,7 @@ h1 {
   background-color: var(--highlight-color);
 }
 
-#node-sprite-visible:checked::before, #node-audio-loop:checked::before {
+#node-sprite-visible:checked::before, #node-audio-loop:checked::before, #dimensions-lock:checked::before {
   transform: scale(1);
 }
 
