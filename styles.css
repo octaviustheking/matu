@@ -1,3 +1,5 @@
+/* i give up on trying to standardize everything */
+
 :root {
     --highlight-color: #074a5d;
     --hierarchy-bg: #181820;
@@ -354,6 +356,27 @@ h1 {
   transform: scale(1);
 }
 
+.opacity-slider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.opacity-slider input {
+    flex: 1;
+}
+
+.opacity-slider input[type="number"] {
+    width: 45px;
+    padding: 3px;
+    text-align: center;
+    font-size: 0.75rem;
+    background-color: var(--rename-color);
+    border: 1px solid var(--highlight-color);
+    color: var(--inspector-font);
+    border-radius: var(--border-radius);
+}
+
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -480,6 +503,18 @@ input[type="range"] {
     max-height: 300px;
     height: auto;
     display: block;
+}
+
+.preview-audio {
+    width: 320px;
+    margin: 12px;
+}
+
+.preview-unsupported {
+    color: var(--preview-font);
+    padding: 20px;
+    text-align: center;
+    min-width: 300px;
 }
 
 .preview-window-header {

@@ -338,22 +338,41 @@ function openPreview(name) {
             <p class="preview-file">${shortenName(name)}</p>
             <button class="close-preview close-button">x</button>
         </div>
-        <img class="preview-image">
     `;
 
-    const image = preview.querySelector('.preview-image');
     const header = preview.querySelector('.preview-window-header');
     const close = preview.querySelector('.close-preview');
 
+    let content = null;
+
     if (file.type.startsWith('image/')) {
-        image.src = URL.createObjectURL(file);
+        content = document.createElement('img');
+        content.className = 'preview-image';
+        content.src = URL.createObjectURL(file);
+
+        content.onload = () => {
+            centerWindow(preview);
+        };
+    } else if (file.type.startsWith('audio/')) {
+        content = document.createElement('audio');
+        content.className = 'preview-audio';
+        content.controls = true;
+        content.src = URL.createObjectURL(file);
+
+        content.onloadedmetadata = () => {
+            centerWindow(preview);
+            content.play().catch(() => {});
+        };
+    } else {
+        content = document.createElement('div');
+        content.className = 'preview-unsupported';
+        content.textContent = 'No preview available';
+        centerWindow(preview);
     }
 
-    document.getElementById('center').appendChild(preview);
+    preview.appendChild(content);
 
-    image.onload = () => {
-        centerWindow(preview);
-    };
+    document.getElementById('center').appendChild(preview);
 
     dragElement(preview, header);
     bringToFront(preview);
@@ -385,6 +404,12 @@ function openPreview(name) {
 }
 
 function closePreview(preview, name) {
+    const audio = preview.querySelector('audio');
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+    }
+
     preview_windows.delete(name);
     preview.remove();
 }
@@ -482,6 +507,19 @@ function renameAsset(old_name) {
         preview_windows.delete(old_name);
         preview_windows.set(new_name, preview);
     }
+
+    refreshAssets();
+}
+
+function refreshAssets() {
+    const selected = getSelected();
+    if (!selected) return;
+
+    if (selected.type === 'sprite') {
+        assetOptions(node_sprite_asset, 'image/', selected.asset_name);
+    } else if (selected.type === 'audio') {
+        assetOptions(node_audio_asset, 'audio/', selected.asset_name);
+    }
 }
 
 // upload assets
@@ -535,6 +573,8 @@ asset_input.addEventListener('change', () => {
             if (belongs_to_asset) {
                 closeInspector(item, 'asset-item');
             }
+
+            refreshAssets();
         });
 
         const label = document.createElement('div');
@@ -549,6 +589,8 @@ asset_input.addEventListener('change', () => {
 
         asset_files.set(unique_name, file);
         asset_tiles.set(unique_name, item);
+
+        refreshAssets();
 
         // asset select
         item.addEventListener('click', () => {

@@ -24,6 +24,7 @@ let selected_node_id = null;
 let previous_width = 100;
 let previous_height = 100;
 
+// this section destroyed my hands lol
 const hierarchy_content = document.getElementById('hierarchy-content');
 
 const node_select_panel = document.getElementById('node-select');
@@ -44,6 +45,7 @@ const node_sprite_fields = document.getElementById('node-sprite-fields');
 const node_sprite_asset = document.getElementById('node-sprite-asset');
 const node_sprite_visible = document.getElementById('node-sprite-visible');
 const node_sprite_opacity = document.getElementById('node-sprite-opacity');
+const node_sprite_opacity_value = document.getElementById('node-sprite-opacity-value');
 
 const node_audio_fields = document.getElementById('node-audio-fields');
 const node_audio_asset = document.getElementById('node-audio-asset');
@@ -398,6 +400,7 @@ function openNodeInspector(node) {
         assetOptions(node_sprite_asset, 'image/', node.asset_name);
         node_sprite_visible.checked = node.visible;
         node_sprite_opacity.value = node.opacity ?? 1;
+        node_sprite_opacity_value.textContent = Math.round((node.opacity ?? 1) * 100);
     } else if (node.type === 'audio') {
         assetOptions(node_audio_asset, 'audio/', node.asset_name);
         node_audio_volume.value = node.volume;
@@ -526,7 +529,25 @@ node_sprite_visible.addEventListener('change', () => {
 node_sprite_opacity.addEventListener('input', () => {
     const node = getSelected();
     if (!node || node.type !== 'sprite') return;
+
     node.opacity = Number(node_sprite_opacity.value);
+    node_sprite_opacity_value.textContent = Math.round(node.opacity * 100);
+})
+
+node_sprite_opacity_value.addEventListener('input', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'sprite') return;
+
+    let percent = Number(node_sprite_opacity_value.value);
+
+    if (Number.isNaN(percent)) return;
+
+    percent = Math.min(100, Math.max(0, percent));
+
+    node.opacity = percent / 100;
+    node_sprite_opacity.value = node.opacity;
+
+    node_sprite_opacity_value.value = percent;
 })
 
 node_audio_asset.addEventListener('change', () => {

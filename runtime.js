@@ -1,19 +1,3 @@
-// example script:
-// function start(self, matu) {
-//     self.speed = 150;
-// }
-
-// function update(self, matu, dt) {
-//     if (matu.input.isDown('arrowright')) self.transform.x += self.speed * dt;
-//     if (matu.input.isDown('arrowleft'))  self.transform.x -= self.speed * dt;
-//     if (matu.input.isDown('arrowdown'))  self.transform.y += self.speed * dt;
-//     if (matu.input.isDown('arrowup'))    self.transform.y -= self.speed * dt;
-// }
-
-// function onDestroy(self, matu) {
-//     matu.log(self.name, 'stopped at', self.transform.x, self.transform.y);
-// }
-
 const run_button = document.getElementById('run-button');
 const stop_button = document.getElementById('stop-button');
 const runtime_status = document.getElementById('runtime-status');
