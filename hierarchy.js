@@ -14,6 +14,12 @@ const node_icons = {
     script: 'C:'
 }
 
+let group_names = new Set();
+let object_names = new Set();
+let sprite_names = new Set();
+let audio_names = new Set();
+let script_names = new Set();
+
 let next_node_id = 1;
 
 const hierarchy_nodes = new Map();
@@ -71,6 +77,93 @@ function defaultNameFor(type) {
 
 function childAcceptable(parent_type, child_type) {
     return valid_children[parent_type]?.includes(child_type) ?? false;
+}
+
+function uniqueName(name, type) {
+    switch (type) {
+        case 'group': 
+            if (group_names.has(name)) {
+                let counter = 1;
+                let new_name = `${name} ${counter + 1}`;
+
+                while (group_names.has(new_name)) {
+                    counter++;
+                    new_name = `${base} ${counter + 1}`;
+                }
+
+                group_names.add(new_name);
+                return new_name;
+            }
+            group_names.add(name);
+            return name;
+            break;
+        case 'object': 
+            if (object_names.has(name)) {
+                let counter = 1;
+                let new_name = `${name} ${counter + 1}`;
+
+                while (object_names.has(new_name)) {
+                    counter++;
+                    new_name = `${base} ${counter + 1}`;
+                }
+
+                object_names.add(new_name);
+                return new_name;
+            }
+            object_names.add(name);
+            return name;
+            break;
+        case 'sprite': 
+            if (sprite_names.has(name)) {
+                let counter = 1;
+                let new_name = `${name} ${counter + 1}`;
+
+                while (sprite_names.has(new_name)) {
+                    counter++;
+                    new_name = `${base} ${counter + 1}`;
+                }
+
+                sprite_names.add(new_name);
+                return new_name;
+            }
+            sprite_names.add(name);
+            return name;
+            break;
+        case 'audio': 
+            if (audio_names.has(name)) {
+                let counter = 1;
+                let new_name = `${name} ${counter + 1}`;
+
+                while (audio_names.has(new_name)) {
+                    counter++;
+                    new_name = `${base} ${counter + 1}`;
+                }
+
+                audio_names.add(new_name);
+                return new_name;
+            }
+            audio_names.add(name);
+            return name;
+            break;
+        case 'script': 
+            if (script_names.has(name)) {
+                let counter = 1;
+                let new_name = `${name} ${counter}`;
+
+                while (script_names.has(new_name)) {
+                    counter++;
+                    new_name = `${base} ${counter}`;
+                }
+
+                script_names.add(new_name);
+                return new_name;
+            }
+            script_names.add(name);
+            return name;
+            break;
+        default:
+            return;
+    }
 }
 
 function createNode(type, parent_id = null, name = null) {
@@ -468,6 +561,35 @@ node_name_input.addEventListener('input', () => {
             assetOptions(parent);
         }
     }
+});
+
+node_name_input.addEventListener('blur', () => {
+    const node = getSelected();
+    let working_name = node_name_input.value;
+    switch (node.type) {
+        case 'group': 
+            node.name = uniqueName(working_name, 'group'); 
+            break;
+        case 'object': 
+            node.name = uniqueName(working_name, 'object'); 
+            break;
+        case 'sprite': 
+            node.name = uniqueName(working_name, 'sprite'); 
+            const parent = getNode(node.parent_id);
+            if (parent?.type === 'object') {
+                assetOptions(parent);
+            }
+            break;
+        case 'audio': 
+            node.name = uniqueName(working_name, 'audio'); 
+            break;
+        case 'script': 
+            node.name = uniqueName(working_name, 'script'); 
+            break;
+    }
+    
+    node_name_input.value = node.name;
+    renderUI();
 });
 
 node_x.addEventListener('input', () => transformObject());
