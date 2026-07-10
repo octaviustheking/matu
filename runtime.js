@@ -1,3 +1,9 @@
+// functions
+// function start (owner, matu) {}
+// function update(owner, matu, dt) {}
+// function end(owner, matu, dt) {}
+// transformations: matu.transform.x and matu.transform.y
+
 const run_button = document.getElementById('run-button');
 const stop_button = document.getElementById('stop-button');
 const runtime_status = document.getElementById('runtime-status');
@@ -36,7 +42,7 @@ function compileScript(node) {
             return {
                 start: typeof start === 'function' ? start : null,
                 update: typeof update === 'function' ? update : null,
-                onDestroy: typeof onDestroy === 'function' ? onDestroy : null
+                end: typeof end === 'function' ? end : null
             };    
         `);
         node.compiled = factory();
@@ -183,10 +189,10 @@ function stopRun() {
     if (!runtime.running) return;
 
     for (const node of hierarchy_nodes.values()) {
-        if (node.type !== 'script' || !node.compiled?.onDestroy) continue;
+        if (node.type !== 'script' || !node.compiled?.end) continue;
         const owner = hierarchy_nodes.get(node.parent_id);
         try {
-            node.compiled.onDestroy(owner, matuAPI);
+            node.compiled.end(owner, matuAPI);
         } catch (error) {
             reportScriptError(node, error);
         }
