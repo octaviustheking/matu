@@ -21,6 +21,7 @@ const viewport = {
         this.offsetY = (canvas.clientHeight - world_height * this.scale) / 2;
     }
 };
+const scene_state = {bg_color: '#101014'};
 
 const preview_window = document.getElementById('preview-window');
 const preview_image = document.getElementById('preview-image');
@@ -41,6 +42,7 @@ let asset_names = new Set();
 let asset_files = new Map();
 let asset_tiles = new Map();
 let asset_images = new Map(); 
+let asset_urls = new Map();
 
 const inspector_thumb = document.getElementById('inspector-thumb');
 const inspector_filename = document.getElementById('inspector-filename');
@@ -150,6 +152,15 @@ function getAssetImage(name) {
     return null; 
 }
 
+function getAssetURL(name) {
+    if (asset_urls.has(name)) return asset_urls.get(name);
+    const file = asset_files.get(name);
+    if (!file) return null;
+    const url = URL.createObjectURL(file);
+    asset_urls.set(name, url);
+    return url;
+}
+
 function drawObject(object_node, sprite_node) {
     if (!sprite_node) return;
 
@@ -189,7 +200,7 @@ function render() {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    context.fillStyle = '#000';
+    context.fillStyle = scene_state.bg_color;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     context.translate(viewport.offsetX, viewport.offsetY);
