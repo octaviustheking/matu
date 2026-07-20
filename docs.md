@@ -15,6 +15,32 @@ Scripting in matu is done with Javascript. Scripts run in `script` nodes and can
 
 `owner` is the parent node that the script is attached to, and `matu` is the API object.
 
+### WARNING
+
+If you have any code that sits outside of the functions listed above, it will run immediately when a script compiles. That means it will run before a game run even starts, meaning you will not have access to `matu` or `owner`. `matu` is only passed into a parameter in the lifecycle functions above.
+
+```js
+// this is wrong and will throw "matu not defined"
+let bg1 = matu.getNode('O:bg1');
+ 
+function update(owner, matu, dt) {
+    matu.object.move(bg1, -1, 0);
+}
+```
+
+```js
+// instead, just declare your variables and then assign them later
+let bg1;
+ 
+function start(owner, matu) {
+    bg1 = matu.getNode('O:bg1');
+}
+ 
+function update(owner, matu, dt) {
+    matu.object.move(bg1, -1, 0);
+}
+```
+
 ---
 
 ## Node lookup
@@ -50,11 +76,60 @@ Returns `true` if `key` is currently held down. It is case-insensitive (for exam
 ## Logging
 
 ### `matu.log(...args)`
-Logs the arguments in both the browser console and the in-editor console panel. It accepts any number of arguments. The objects are JSON-stringified. 
+Logs the arguments in both the browser console and the in-editor console panel. It accepts any number of arguments. The objects are JSON-stringified.
 
 ---
 
-## Object (`matu.object`)
+## Reading node data 
+
+There is no getter for every value. Instead, most fields can just be read off the node.
+
+### `object` nodes
+```js
+node.transform.x          // number
+node.transform.y          // number
+node.transform.width      // number
+node.transform.height     // number
+node.transform.rotation   // number in radians
+node.selected_sprite      // id of the explicitly chosen sprite child, or null for auto
+```
+
+### `sprite` nodes
+```js
+node.opacity      // number, 0-1
+node.visible      // boolean
+node.asset_name   // string or null
+```
+ 
+### `audio` nodes
+```js
+node.volume       // number, 0-1
+node.loop         // boolean
+node.asset_name   // string or null
+```
+
+### All nodes
+```js
+node.id          // internal id
+node.name        // display name
+node.type        // 'group', 'object', 'sprite', 'audio', or 'script'
+node.parent_id    // parent's id, or null
+node.child_ids    // array of child ids
+```
+
+You can mutate these fields directly or you can use the setter functions below, like so:
+```js
+node.transform.x++;
+node.transform.y++;
+```
+
+```js
+matu.object.move(bg1, 1, 1);
+```
+
+---
+
+## Object transform (`matu.object`)
 
 Only works on `object` nodes.
 
@@ -154,3 +229,35 @@ Runs `callback` repeatedly every `seconds`. It returns a timer id.
 Cancels a pending or repeating timer by id.
 
 ---
+
+## Example
+ 
+```js
+function start(owner, matu) {
+    matu.globals.set('hits', 0);
+}
+ 
+function update(owner, matu, dt) {
+    matu.object.move(owner, 60 * dt, 0);
+    matu.object.rotate(owner, 90 * dt);
+ 
+    const target = matu.getNode('O:Enemy');
+    if (target && matu.physics.intersects(owner, target)) {
+        matu.sprite.setOpacity(matu.getNode('S:PlayerSprite'), 0.3);
+        matu.object.setSprite(owner, matu.getNode('S:HurtSprite'));
+        matu.audio.play(matu.getNode('A:HitSound'));
+        matu.globals.set('hits', matu.globals.get('hits', 0) + 1);
+        matu.scene.setBackgroundColor('#440000');
+        matu.timer.after(0.5, () => matu.scene.setBackgroundColor('#000000'));
+    }
+}
+ 
+function OnClone(owner, matu, original) {
+    matu.log('Cloned from', original.name);
+}
+ 
+function OnDestroy(owner, matu) {
+    matu.log(owner.name, 'destroyed');
+}
+```
+ 

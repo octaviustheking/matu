@@ -66,9 +66,7 @@ function compileScript(node) {
         logToConsole(`Compiler error in ${node.name}: ${error.message}`, 'error');
     }
 
-    if (selected_node_id === node.id) {
-        showError(node);
-    }
+    updateScriptErrors(node);
 }
 
 function compileAll() {
@@ -101,6 +99,24 @@ function showError(node) {
     }
 }
 
+function updateScriptErrors(node) {
+    if (selected_node_id === node.id) {
+        showError(node);
+    }
+
+    const popout = script_popouts.get(node.id);
+    if (!popout) return;
+
+    const error_element = popout.querySelector('.popout-error');
+    if (node.error) {
+        error_element.textContent = node.error;
+        error_element.classList.add('show');
+    } else {
+        error_element.textContent = '';
+        error_element.classList.remove('show');
+    }
+}
+
 function getOBB(node) {
     const transform = node.transform;
     return {
@@ -119,7 +135,7 @@ function getOBBCorners(obb) {
     for (const[sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
         const lx = sx * obb.hw;
         const ly = sy * obb.hh;
-        corners.push({x: obb.cs + lx * cos - ly * sin, y: obb.cy + lx * sin + ly * cos});
+        corners.push({x: obb.cx + lx * cos - ly * sin, y: obb.cy + lx * sin + ly * cos});
     }
     return corners;
 }
@@ -144,8 +160,8 @@ function projectAxis(corners, axis) {
 function obbIntersects(node_a, node_b) {
     const obb_a = getOBB(node_a);
     const obb_b = getOBB(node_b);
-    const corners_a = getOBBCorners(node_a);
-    const corners_b = getOBBCorners(node_b);
+    const corners_a = getOBBCorners(obb_a);
+    const corners_b = getOBBCorners(obb_b);
     const axes = [...getOBBAxes(obb_a), ...getOBBAxes(obb_b)];
 
     for (const axis of axes) {
@@ -247,7 +263,7 @@ const matuAPI = {
     },
     log(...args) {
         console.log('[script]', ...args);
-        logToConsole(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ', 'log'));
+        logToConsole(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
     },
     object: {
         setPosition(node, x, y) {
@@ -310,8 +326,6 @@ const matuAPI = {
                 return;
             }
             const url = getAssetURL(node.asset_name);
-            if (!url) return;
-            const audio = getAudioElement(node.asset_name);
             if(!url) return;
             const audio = getAudioElement(node);
             if (audio.src !== url) audio.src = url;
@@ -428,7 +442,7 @@ function takeSnapshot() {
 }
 
 function restoreSnapshot(snap) {
-    for (const[id, saved] of snapshot.nodes.entries()) {
+    for (const[id, saved] of snap.nodes.entries()) {
         const node = hierarchy_nodes.get(id);
         if (!node) continue;
         if (node.type === 'object') node.transform = {...saved.transform};
@@ -442,7 +456,7 @@ function restoreSnapshot(snap) {
             node.asset_name = saved.asset_name;
         }
     }
-    scene_state.bg_color = snapshot.bg_color;
+    scene_state.bg_color = snap.bg_color;
 }
 
 function setUI(running) {
@@ -453,7 +467,7 @@ function setUI(running) {
 
 function cloneNodeTree(source_id, new_parent_id) {
     const source = hierarchy_nodes.get(source_id);
-    if (!source) null;
+    if (!source) return null;
 
     const id = makeNodeID();
     const clone = {...source, id, parent_id: new_parent_id, child_ids: []};
@@ -547,7 +561,7 @@ function reportScriptError(node, error) {
     console.error(`Script error in ${node.name}: `, error);
     runtime_status.textContent = `error in ${node.name}: ${error.message}`;
     logToConsole(`Script error in ${node.name}: ${error.message}`, 'error');
-    if (selected_node_id === node.id) showError(node);
+    updateScriptErrors(node);
 }
 
 function updateTimers(dt) {
@@ -566,12 +580,12 @@ function updateTimers(dt) {
 }
 
 function tick(now) {
-    updateTimers(dt);
-
     if (!runtime.running) return;
 
     const dt = (now - runtime.last_time) / 1000;
     runtime.last_time = now;
+
+    updateTimers(dt);
 
     for (const node of hierarchy_nodes.values()) {
         if (node.type !== 'script' || !node.compiled?.update) continue;

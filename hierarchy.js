@@ -14,6 +14,9 @@ const node_icons = {
     script: 'C:'
 }
 
+const auto_close_pairs = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`'};
+const closing_chars = [')', ']', '}'];
+
 let next_node_id = 1;
 
 const hierarchy_nodes = new Map();
@@ -58,6 +61,8 @@ const node_audio_loop = document.getElementById('node-audio-loop');
 
 const node_script_fields = document.getElementById('node-script-fields');
 const node_script_code = document.getElementById('node-script-code');
+const node_script_popout = document.getElementById('node-script-popout');
+const script_popouts = new Map();
 
 const node_delete_button = document.getElementById('node-delete');
 const asset_select_panel = document.getElementById('asset-select');
@@ -101,6 +106,250 @@ function uniqueName(name, type, ignore_id = null) {
     }
 
     return name;
+}
+
+function openPopout(node) {
+    if (!node || node.type !== 'script') return;
+
+    if (script_popouts.has(node.id)) {
+        const popout = script_popouts.get(node.id);
+        centerPopout(popout);
+        bringToFront(popout);
+        return;
+    }
+
+    const popout = document.createElement('div');
+    popout.className = 'preview-window code-popout-window';
+    popout.style.display = 'flex';
+
+    popout.innerHTML = `
+        <div class="preview-window-header panel-header">
+            <h1 class="preview-header">${node.name}</h1>
+            <p class="preview-file">Script</p>
+            <button class="close-preview close-button">x</button>
+        </div>
+        <textarea class="popout-textarea" spellcheck="false"></textarea>
+        <div class="popout-error"></div>
+    `;
+
+    const header = popout.querySelector('.preview-window-header');
+    const close = popout.querySelector('.close-preview');
+    const textarea = popout.querySelector('.popout-textarea');
+
+    textarea.value = node.code;
+
+    textarea.addEventListener('keydown', handleKeyDown);
+
+    textarea.addEventListener('input', () => {
+        node.code = textarea.value;
+        if (selected_node_id === node.id) {
+            node_script_code.value = node.code;
+        }
+    });
+
+    textarea.addEventListener('blur', () => {
+        compileScript(node);
+    });
+
+    close.onclick = () => {
+        closePopout(node.id);
+    };
+
+    document.getElementById('center').appendChild(popout);
+
+    centerPopout(popout);
+    dragElement(popout, header);
+    bringToFront(popout);
+
+    script_popouts.set(node.id, popout);
+    updateScriptErrors(node);
+}
+
+function centerPopout(popout) {
+    const parent = document.getElementById('center');
+    const width = popout.offsetWidth || 480;
+    const height = popout.offsetHeight || 360;
+    popout.style.left = (parent.clientWidth - width) / 2 + 'px';
+    popout.style.top = (parent.clientHeight - height) / 2 + 'px';
+}
+
+function closePopout(node_id) {
+    const popout = script_popouts.get(node_id);
+    if (!popout) return;
+    popout.remove();
+    script_popouts.delete(node_id);
+}
+
+function syncCode(node) {
+    const popout = script_popouts.get(node.id);
+    if (!popout) return;
+    const textarea = popout.querySelector('.popout-textarea');
+    if (textarea && textarea.value !== node.code) textarea.value = node.code;
+}
+
+function syncPopoutTitle(node) {
+    const popout = script_popouts.get(node.id);
+    if (!popout) return;
+    const title = popout.querySelector('.preview-header');
+    if (title) title.textContent = node.name;
+}
+
+function fireInput(element) {
+    element.dispatchEvent(new Event('input', {bubbles: true}));
+}
+
+function indentLines(element, outdent) {
+    const value = element.value;
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+
+    let line_start = value.lastIndexOf('\n', start - 1) + 1;
+    let line_end = value.indexOf('\n', end - 1);
+    if (line_end === -1) line_end = value.length;
+
+    const before = value.slice(0, line_start);
+    const selected = value.slice(line_start, line_end);
+    const after = value.slice(line_end);
+
+    const lines = selected.split('\n');
+    let first_line_delta = 0;
+    let total_delta = 0;
+
+    const new_lines = lines.map((line, i) => {
+        if (outdent) {
+            let removed = 0;
+            if (line.startsWith('    ')) removed = 4;
+            else if (line.startsWith('\t')) removed = 1;
+            else {
+                const match = line.match(/^ +/);
+                if (match) removed = Math.min(match[0].length, 4);
+            }
+            if (i === 0) first_line_delta = -removed;
+            total_delta -= removed;
+            return line.slice(removed);
+        } else {
+            if (i === 0) first_line_delta = 4;
+            total_delta += 4;
+            return '    ' + line; 
+        }
+    });
+
+    element.value = before + new_lines.join('\n') + after;
+    element.selectionStart = Math.max(line_start, start + first_line_delta);
+    element.selectionEnd = end + total_delta;
+    fireInput(element);
+}
+
+function handleKeyDown(e) {
+    const element = e.target;
+
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+
+        if (start !== end && element.value.slice(start, end).includes('\n')) {
+            indentLines(element, e.shiftKey);
+            return;
+        }
+
+        if (e.shiftKey) {
+            indentLines(element, true);
+        } else {
+            element.setRangeText('    ', start, end, 'end');
+            fireInput(element);
+        }
+        return;
+    }
+
+    if (auto_close_pairs[e.key]) {
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+
+        if (start !== end) {
+            e.preventDefault();
+            const selected = element.value.slice(start, end);
+            element.setRangeText(e.key + selected + auto_close_pairs[e.key], start, end, 'end');
+            fireInput(element);
+            return;
+        }
+
+        const is_quote = e.key === '"' || e.key === "'" || e.key === '`';
+        const next_char = element.value[start];
+
+        if (is_quote && next_char === e.key) {
+            e.preventDefault();
+            element.selectionStart = element.selectionEnd = start + 1;
+            return;
+        }
+
+        e.preventDefault();
+        element.setRangeText(e.key + auto_close_pairs[e.key], start, end, 'start');
+        element.selectionStart = element.selectionEnd = start + 1;
+        fireInput(element);
+        return;
+    }
+
+    if (closing_chars.includes(e.key)) {
+        const start = element.selectionStart;
+        if (element.selectionStart === element.selectionEnd && element.value[start] === e.key) {
+            e.preventDefault();
+            element.selectionStart = element.selectionEnd = start + 1;
+        }
+
+        return;
+    }
+
+    if (e.key === 'Backspace') {
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+
+        if (start === end && start > 0) {
+            const before = element.value[start - 1];
+            const after = element.value[start];
+
+            if (auto_close_pairs[before] === after) {
+                e.preventDefault();
+                element.setRangeText('', start - 1, start + 1, 'start');
+                fireInput(element);
+            }
+        }
+    }
+
+    if (e.key === 'Enter') {
+        e.preventDefault();
+
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+        const value = element.value;
+
+        const line_start = value.lastIndexOf('\n', start - 1) + 1;
+        const current_line = value.slice(line_start, start);
+        const indent = (current_line.match(/^[ \t]*/) || [''])[0];
+
+        const opens = '([{';
+        const closes = ')]}';
+        const prev_char = value[start - 1];
+        const next_char = value[end];
+
+        const open_index = opens.indexOf(prev_char);
+        const opening_now = open_index !== -1;
+        const splitting_pair = opening_now && closes[open_index] === next_char;
+
+        if (splitting_pair) {
+            const inner_indent = indent + '    ';
+            const insertion = '\n' + inner_indent + '\n' + indent;
+            element.setRangeText(insertion, start, end, 'start');
+            element.selectionStart = element.selectionEnd = start + 1 + inner_indent.length;
+            fireInput(element);
+            return;
+        }
+
+        const new_indent = opening_now ? indent + '    ' : indent;
+        element.setRangeText('\n' + new_indent, start, end, 'end');
+        fireInput(element);
+        return;
+    }
 }
 
 function createNode(type, parent_id = null, name = null) {
@@ -172,6 +421,8 @@ function deleteNode(id) {
         const index = hierarchy_roots.indexOf(id);
         if (index !== -1) hierarchy_roots.splice(index, 1);
     }
+
+    if (node.type === 'script') closePopout(id);
 
     hierarchy_nodes.delete(id);
 
@@ -501,8 +752,10 @@ function openNodeInspector(node) {
         node_script_code.value = node.code;
     }
 
-    if (typeof showScriptError === 'function') {
-        showScriptError(node.type === 'script' ? node : null);
+    if (node.type === 'script') {
+        updateScriptErrors(node);
+    } else {
+        showError(null);
     }
 }
 
@@ -560,6 +813,10 @@ node_name_input.addEventListener('input', () => {
             assetOptions(parent);
         }
     }
+
+    if (node.type === 'script') {
+        syncPopoutTitle(node);
+    }
 });
 
 node_name_input.addEventListener('blur', () => {
@@ -570,6 +827,10 @@ node_name_input.addEventListener('blur', () => {
 
     node_name_input.value = node.name;
     renderUI();
+
+    if (node.type === 'script') {
+        syncPopoutTitle(node);
+    }
 });
 
 node_x.addEventListener('input', () => transformObject());
@@ -692,6 +953,15 @@ node_script_code.addEventListener('input', () => {
     const node = getSelected();
     if (!node || node.type !== 'script') return;
     node.code = node_script_code.value;
+    syncCode(node);
+});
+
+node_script_code.addEventListener('keydown', handleKeyDown);
+
+node_script_popout.addEventListener('click', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'script') return;
+    openPopout(node);
 });
 
 node_delete_button.addEventListener('click', () => {
