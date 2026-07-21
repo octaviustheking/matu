@@ -1,8 +1,9 @@
 const valid_children = {
     group: ['group', 'object'],
-    object: ['sprite', 'audio', 'script'],
+    object: ['sprite', 'audio', 'label', 'script'],
     sprite: [],
     audio: [],
+    label: [],
     script: []
 };
 
@@ -11,6 +12,7 @@ const node_icons = {
     object: 'O:',
     sprite: 'S:',
     audio:  'A:',
+    label: 'L:',
     script: 'C:'
 }
 
@@ -59,6 +61,13 @@ const node_audio_volume = document.getElementById('node-audio-volume');
 const node_audio_volume_value = document.getElementById('node-audio-volume-value');
 const node_audio_loop = document.getElementById('node-audio-loop');
 
+const node_label_fields = document.getElementById('node-label-fields');
+const node_label_text = document.getElementById('node-label-text');
+const node_label_font = document.getElementById('node-label-font');
+const node_label_size = document.getElementById('node-label-size');
+const node_label_color = document.getElementById('node-label-color');
+const node_label_visible = document.getElementById('node-label-visible');
+
 const node_script_fields = document.getElementById('node-script-fields');
 const node_script_code = document.getElementById('node-script-code');
 const node_script_popout = document.getElementById('node-script-popout');
@@ -74,7 +83,7 @@ function makeNodeID() {
 
 function defaultNameFor(type) {
     const count = [...hierarchy_nodes.values()].filter(n => n.type === type).length + 1;
-    const labels = {group: 'Group', object: 'Object', sprite: 'Sprite', audio: 'Audio', script: 'Script'};
+    const labels = {group: 'Group', object: 'Object', sprite: 'Sprite', audio: 'Audio', label: 'Label', script: 'Script'};
     return `${labels[type]} ${count}`;
 }
 
@@ -387,6 +396,12 @@ function createNode(type, parent_id = null, name = null) {
         node.asset_name = null;
         node.volume = 1;
         node.loop = false;
+    } else if (type === 'label') {
+        node.text = 'Label';
+        node.font_size = 16;
+        node.font_family = 'JetBrains Mono';
+        node.color = '#ffffff';
+        node.visible = true;
     } else if (type === 'script') {
         node.code = '';
         node.compiled = null;
@@ -719,6 +734,7 @@ function openNodeInspector(node) {
     node_object_fields.style.display = node.type === 'object' ? 'flex' : 'none';
     node_sprite_fields.style.display = node.type === 'sprite' ? 'flex' : 'none';
     node_audio_fields.style.display = node.type === 'audio' ? 'flex' : 'none';
+    node_label_fields.style.display = node.type === 'label' ? 'flex' : 'none';
     node_script_fields.style.display = node.type === 'script' ? 'flex' : 'none';
 
     if (node.type === 'object') {
@@ -748,6 +764,12 @@ function openNodeInspector(node) {
         node_audio_volume.value = node.volume ?? 1;
         node_audio_volume_value.value = Math.round((node.volume ?? 1) * 100);
         node_audio_loop.checked = node.loop;
+    } else if (node.type === 'label') {
+        node_label_text.value = node.text;
+        node_label_font.value = node.font_family;
+        node_label_size.value = node.font_size;
+        node_label_color.value = node.color;
+        node_label_visible.checked = node.visible;
     } else if (node.type === 'script') {
         node_script_code.value = node.code;
     }
@@ -947,6 +969,37 @@ node_audio_loop.addEventListener('change', () => {
     const node = getSelected();
     if (!node || node.type !== 'audio') return;
     node.loop = node_audio_loop.checked;
+});
+
+node_label_text.addEventListener('input', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'label') return;
+    node.text = node_label_text.value;
+});
+
+node_label_font.addEventListener('change', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'label') return;
+    node.font_family = node_label_font.value;
+});
+
+node_label_size.addEventListener('input', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'label') return;
+    const value = Number(node_label_size.value);
+    if (!Number.isNaN(value) && value > 0) node.font_size = value;
+});
+
+node_label_color.addEventListener('input', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'label') return;
+    node.color = node_label_color.value;
+});
+
+node_label_visible.addEventListener('change', () => {
+    const node = getSelected();
+    if (!node || node.type !== 'label') return;
+    node.visible = node_label_visible.checked;
 });
 
 node_script_code.addEventListener('input', () => {

@@ -83,6 +83,7 @@ const label_to_hierarchy = {
     'Object': 'object',
     'Sprite': 'sprite',
     'Audio': 'audio',
+    'Label': 'label',
     'Script': 'script'
 };
 
@@ -135,6 +136,14 @@ function drawScene() {
     for (const {object_node, sprite_node} of getRenderables()) {
         drawObject(object_node, sprite_node);
     }
+
+    for (const node of hierarchy_nodes.values()) {
+        if (node.type !== 'object') continue;
+        for (const child_id of node.child_ids) {
+            const child = hierarchy_nodes.get(child_id);
+            if (child && child.type === 'label') drawLabel(node, child);
+        }
+    }
 }
 
 function getAssetImage(name) {
@@ -182,6 +191,23 @@ function drawObject(object_node, sprite_node) {
     context.translate(x + width / 2, y + height / 2);
     context.rotate(rotation);
     context.drawImage(img, -width / 2, -height / 2, width, height);
+    context.restore();
+}
+
+function drawLabel(object, label) {
+    if (!label.visible || !label.text) return;
+
+    const {x, y, rotation} = object.transform;
+
+    context.save();
+    context.translate(x, y);
+    if (rotation) context.rotate(rotation);
+
+    context.fillStyle = label.color || '#ffffff';
+    context.font = `${label.font_size}px "${label.font_family}"`;
+    context.textBaseline = 'top';
+    context.fillText(label.text, 0, 0);
+
     context.restore();
 }
 

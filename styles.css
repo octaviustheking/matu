@@ -351,32 +351,32 @@ body:not(.dragging-node) .hierarchy-node:hover {
     margin-top: 5px;
 }
 
-#node-sprite-visible, #node-audio-loop, #dimensions-lock, #proportion-lock {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  flex: 0 0 auto;
-  border: 2px solid var(--highlight-color);
-  border-radius: var(--border-radius);
-  background-color: var(--inspector-bg);
-  display: inline-grid;
-  place-content: center;
-  cursor: pointer;
+#node-sprite-visible, #node-audio-loop, #dimensions-lock, #proportion-lock, #node-label-visible {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex: 0 0 auto;
+    border: 2px solid var(--highlight-color);
+    border-radius: var(--border-radius);
+    background-color: var(--inspector-bg);
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
 }
 
-#node-sprite-visible::before, #node-audio-loop::before, #dimensions-lock::before, #proportion-lock::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  transform: scale(0);
-  transition: 0.2s transform ease-in-out;
-  background-color: var(--highlight-color);
+#node-sprite-visible::before, #node-audio-loop::before, #dimensions-lock::before, #proportion-lock::before, #node-label-visible::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    transform: scale(0);
+    transition: 0.2s transform ease-in-out;
+    background-color: var(--highlight-color);
 }
 
-#node-sprite-visible:checked::before, #node-audio-loop:checked::before, #dimensions-lock:checked::before, #proportion-lock:checked::before {
-  transform: scale(1);
+#node-sprite-visible:checked::before, #node-audio-loop:checked::before, #dimensions-lock:checked::before, #proportion-lock:checked::before, #node-label-visible:checked::before {
+    transform: scale(1);
 }
 
 .slider {
@@ -429,6 +429,12 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"] {
     overflow: hidden;
     border-radius: 16px;
+}
+
+#node-label-font {
+    font-family: "JetBrains Mono", monospace;
+    font-optical-sizing: auto;
+    font-style: normal;
 }
 
 .hierarchy-node.dragover {

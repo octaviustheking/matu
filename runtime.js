@@ -19,7 +19,7 @@ const runtime = {
     keys_down: new Set()
 };
 
-const prefix_to_type = {G: 'group', O: 'object', S: 'sprite', A: 'audio', C: 'script'};
+const prefix_to_type = {G: 'group', O: 'object', S: 'sprite', A: 'audio', L: 'label', C: 'script'};
 
 function getAudioElement(node) {
     let audio = audio_elements.get(node.id);
@@ -180,7 +180,7 @@ node_script_code.addEventListener('blur', () => {
 
 const matuAPI = {
     getNode(name) {
-        const match = /^([GOSAC]):(.+)$/.exec(name);
+        const match = /^([GOSALC]):(.+)$/.exec(name);
         if (match) {
             const type = prefix_to_type[match[1]];
             for (const node of hierarchy_nodes.values()) {
@@ -379,6 +379,28 @@ const matuAPI = {
             audio_elements.delete(node.id);
         }
     },
+    label: {
+        setText(node, text) {
+            if (!node || node.type !== 'label') return;
+            node.text = String(text);
+        },
+        setFontSize(node, size) {
+            if (!node || node.type !== 'label') return;
+            node.font_size = size;
+        },
+        setFont(node, font_family) {
+            if (!node || node.type !== 'label') return;
+            node.font_family = font_family;
+        },
+        setColor(node, color) {
+            if (!node || node.type !== 'label') return;
+            node.color = color;
+        },
+        setVisible(node, visible) {
+            if (!node || node.type !== 'label') return;
+            node.visible = !!visible;
+        }
+    },
     physics: {
         intersects(a, b) {
             if (!a || !b || a.type !== 'object' || b.type !== 'object') return false;
@@ -444,6 +466,8 @@ function takeSnapshot() {
             snap.set(id, {visible: node.visible, asset_name: node.asset_name, opacity: node.opacity});
         } else if (node.type === 'audio') {
             snap.set(id, {volume: node.volume, loop: node.loop, asset_name: node.asset_name});
+        } else if (node.type === 'label') {
+            snap.set(id, {text: node.text, font_size: node.font_size, font_family: node.font_family, color: node.color, visible: node.visible});
         }
     }
     return {nodes: snap, bg_color: scene_state.bg_color};
@@ -462,6 +486,12 @@ function restoreSnapshot(snap) {
             node.volume = saved.volume;
             node.loop = saved.loop;
             node.asset_name = saved.asset_name;
+        } else if (node.type === 'label') {
+            node.text = saved.text;
+            node.font_size = saved.font_size;
+            node.font_family = saved.font_family;
+            node.color = saved.color;
+            node.visible = saved.visible;
         }
     }
     scene_state.bg_color = snap.bg_color;

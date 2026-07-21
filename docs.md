@@ -59,7 +59,7 @@ Finds a node by its internal id. It will return `null` if not found.
 Creates a new node of `type` (`'group', 'object', 'sprite', 'audio', or 'script'`) under `parent_id`. `name` is optional. Compiles and runs `start()` on any script nodes in the new node (itself or its children). Returns the new node, or `null` if the creation filed (such as an invalid parent/child combo). 
 
 ### `matu.clone(node, parent_override_id?)`
-Deep-cloens `node` and its entire subtree (such as transform, sprite/audio settings, and the script code is all copied). By default, the clone is placed under the same parent. Pass `parent_override_id` to place it elsewhere (or `null` to place it in the root). It compiles and runs `start()`, then `OnClone(owner, matu, original)`, on every script in the cloned subtree. It returns the clone. 
+Deep-clones `node` and its entire subtree (such as transform, sprite/audio settings, and the script code is all copied). By default, the clone is placed under the same parent. Pass `parent_override_id` to place it elsewhere (or `null` to place it in the root). It compiles and runs `start()`, then `OnClone(owner, matu, original)`, on every script in the cloned subtree. It returns the clone. 
 
 ### `matu.destroy(node)`
 Runs `OnDestroy(owner, matu)` on `node` and every script in its subtree, then removes the node and its children entirely. Use this instead of discarding a reference. Normal JS garbage collection won't remove it from the scene. 
