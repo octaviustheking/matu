@@ -256,6 +256,14 @@ const matuAPI = {
         deleteNode(node.id);
         renderUI();
     },
+    runtime: {
+        stop() {
+            stopRun();
+        },
+        isRunning() {
+            return runtime.running;
+        }
+    },
     input: {
         isDown(key) {
             return runtime.keys_down.has(key.toLowerCase());
@@ -588,6 +596,7 @@ function tick(now) {
     updateTimers(dt);
 
     for (const node of hierarchy_nodes.values()) {
+        if (!runtime.running) break;
         if (node.type !== 'script' || !node.compiled?.update) continue;
         const owner = hierarchy_nodes.get(node.parent_id);
         try {
